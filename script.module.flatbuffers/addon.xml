@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="script.module.flatbuffers"
+    name="flatbuffers"
+    version="1.8.1"
+    provider-name="Martin Böh">
+  <requires>
+    <import addon="xbmc.python" version="2.1.0"/>
+  </requires>
+  <extension point="xbmc.python.module" library="flatbuffers" />
+  <extension point="xbmc.addon.metadata">
+    <summary>Flatbuffers</summary>
+    <description>The flatbuffers python library</description>
+    <license>Apache 2.0</license>
+    <platform>all</platform>
+    <website>http://google.github.io/flatbuffers/</website>
+    <source>https://github.com/google/flatbuffers</source>
+    <email>mart.b@outlook.de</email>
+  </extension>
+</addon>
