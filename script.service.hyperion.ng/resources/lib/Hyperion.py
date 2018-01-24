@@ -44,15 +44,10 @@ class Hyperion(object):
     from the Hyperion server (or the call has timed out)
     '''
     
-    def __init__(self, server, port):
-        '''Constructor
-        - server : server address of Hyperion
-        - port   : port number of Hyperion
-        '''
-        self.host = server
-        self.port = port
+    def __init__(self, config):
         self.reconnectTries = 0
         self.connected = False
+        self.config = config
        
     def connect(self):
         try:
@@ -60,7 +55,7 @@ class Hyperion(object):
             self.__socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.__socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             self.__socket.settimeout(2)
-            self.__socket.connect((self.host, self.port))
+            self.__socket.connect((self.config.address, self.config.port))
             self.connected = True
             return True
         except socket.error, e:

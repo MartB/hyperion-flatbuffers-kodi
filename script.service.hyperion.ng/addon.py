@@ -48,7 +48,8 @@ class HyperionMonitor( xbmc.Monitor ):
         
   def onSettingsChanged( self ):
     settings.readSettings()
-     
+    # <todo> We should probably reset the connection here if any connection relevant setting changed
+
   def onAbortRequested(self):
     self.abortRequested = True
 
@@ -101,9 +102,10 @@ class HyperionPlayer( xbmc.Player ):
 
 class HyperionKodiGrabber():
     def __init__( self, *args, **kwargs ):
-        self.hyperion = Hyperion(settings.address, settings.port)
+        self.hyperion = Hyperion(settings)
         self.reconnectTries = 0
         self.capture = xbmc.RenderCapture()
+        self.currentSettingsRev = settings.rev
 
     def process(self):
         if playerMonitor.getGrabbingState() != HyperionPlayer.GRABBING_START or not xbmc.getCondVisibility("Player.Playing"):
@@ -168,13 +170,14 @@ class HyperionKodiGrabber():
         return lastConnectResult
 
     def modifiedTimeoutSleep(self):
-        i = 0
-        while (i < settings.timeout): #dont sleep if config changed
+        for i in range(0, settings.timeout - 1):
             if xbmcMonitor.abortRequested:
-                return self
+                return
+            if settings.rev != self.currentSettingsRev:
+                self.currentSettingsRev = settings.rev
+                return
             else:
                 xbmc.sleep(1000)
-            i += 1
 
     def playerStateChangedCB(self, state):
         if state == HyperionPlayer.GRABBING_START:
