@@ -2,7 +2,7 @@
 <addon id="script.module.flatbuffers"
     name="flatbuffers"
     version="1.8.1"
-    provider-name="Martin Böh">
+    provider-name="MartB">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>
   </requires>
