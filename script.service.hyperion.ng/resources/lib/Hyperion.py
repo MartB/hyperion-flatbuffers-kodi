@@ -27,11 +27,16 @@ import time
 import io
 
 # flatbuffers message includes
-from proto.ImageRequest import *
-from proto.ClearRequest import *
-from proto.HyperionRequest import *
-from proto.Command import Command
-from proto.Type import Type
+from hyperionnet.Clear import *
+from hyperionnet.Color import *
+from hyperionnet.Image import *
+from hyperionnet.RawImage import *
+from hyperionnet.Register import *
+from hyperionnet.Reply import *
+from hyperionnet.Request import *
+
+from hyperionnet.Command import Command
+from hyperionnet.ImageType import ImageType
 
 from misc import log, notify
 class Hyperion(object):
@@ -56,6 +61,8 @@ class Hyperion(object):
             self.__socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             self.__socket.settimeout(2)
             self.__socket.connect((self.config.address, self.config.port))
+            self.Register("HyperionKodiAddon v2", 1);
+
             self.connected = True
             return True
         except socket.error, e:
@@ -75,87 +82,83 @@ class Hyperion(object):
         '''
         self.__socket.close()
 
-    def sendColor(self, color, priority, duration = -1):
+    def Register(self, friendlyName, priority):
+        builder = flatbuffers.Builder(0)
+        name = builder.CreateString(friendlyName);
+
+        RegisterStart(builder)
+        RegisterAddOrigin(builder, name)
+        RegisterAddPriority(builder, priority)
+
+        return self.__sendMessage(builder, Command.Register, RegisterEnd(builder))
+
+    def sendColor(self, color, duration = -1):
         '''Send a static color to Hyperion
         - color    : integer value with the color as 0x00RRGGBB
-        - priority : the priority channel to use
         - duration : duration the leds should be set
         ''' 
         builder = flatbuffers.Builder(0)
-        ColorRequestStart(builder)
-        ColorRequestAddDuration(builder, duration)
-        ColorRequestAddPriority(builder, priority)
-        ColorRequestAddRgbColor(builder, color)
-        colorReqData = ColorRequestEnd(builder)
-
-        HyperionRequestStart(builder)
-        HyperionRequestAddCommand(builder, Command.COLOR) 
-        HyperionRequestAddColorRequest(builder, colorReqData)
-        builder.Finish(HyperionRequestEnd(builder))
-
-        return self.__sendMessage(builder.Output())
+        ColorStart(builder)
+        ColorAddRgbColor(builder, color)
+        ColorAddDuration(builder, duration)
+        return self.__sendMessage(builder, Command.Color, ColorEnd(builder))
         
-    def sendImage(self, width, height, data, priority, duration = -1):
+    def sendImage(self, width, height, data, duration = -1):
         '''Send an image to Hyperion
         - width    : width of the image
         - height   : height of the image
         - data     : image data (byte string containing 0xRRGGBB pixel values)
-        - priority : the priority channel to use
         - duration : duration the leds should be set
         ''' 
         builder = flatbuffers.Builder(width * height * 3)
 
-        imgBytes = builder.CreateByteVector(data)
-        ImageRequestStart(builder)
-        ImageRequestAddDuration(builder, duration)
-        ImageRequestAddImageheight(builder, height)
-        ImageRequestAddImagewidth(builder, width)
-        ImageRequestAddPriority(builder, priority)
-        ImageRequestAddImagedata(builder, imgBytes)
-        imgReqData = ImageRequestEnd(builder)
+        buffer = builder.CreateByteVector(data);
+        RawImageStart(builder)
+        RawImageAddData(builder, buffer)
+        RawImageAddHeight(builder,height)
+        RawImageAddWidth(builder,width)
+        rawImageData = RawImageEnd(builder);
 
-        HyperionRequestStart(builder)
-        HyperionRequestAddCommand(builder, Command.IMAGE) 
-        HyperionRequestAddImageRequest(builder, imgReqData)
-        builder.Finish(HyperionRequestEnd(builder))
+        ImageStart(builder)
+        ImageAddDuration(builder, duration)
+        ImageAddDataType(builder, ImageType.RawImage)
+        ImageAddData(builder, rawImageData)
 
-        return self.__sendMessage(builder.Output())
+        return self.__sendMessage(builder, Command.Image, ImageEnd(builder))
         
     def clear(self, priority):
         '''Clear the given priority channel
         - priority : the priority channel to clear
         '''
+
+        log("Clear blocked, conflicting implementation")
+        return;
+
         builder = flatbuffers.Builder(0)
 
-        ClearRequestStart(builder)
-        ClearRequestAddPriority(builder,priority)
-        clearReqData = ClearRequestEnd(builder)
+        ClearStart(builder)
 
-        HyperionRequestStart(builder)
-        HyperionRequestAddCommand(builder, Command.CLEAR) 
-        HyperionRequestAddClearRequest(builder, clearReqData)
-        builder.Finish(HyperionRequestEnd(builder))
+        if priority != -1:
+            ClearAddPriority(builder,priority)
 
-        print "clearing ..."
-    
-        return self.__sendMessage(builder.Output())
+        return self.__sendMessage(builder, Command.Clear, ClearEnd(builder))
     
     def clearall(self):
         '''Clear all active priority channels
         '''
-        builder = flatbuffers.Builder(0)
-
-        HyperionRequestStart(builder)
-        HyperionRequestAddCommand(builder, Command.CLEARALL) 
-        builder.Finish(HyperionRequestEnd(builder))
-
-        return self.__sendMessage(builder.Output())
+        return clear(-1)
         
-    def __sendMessage(self, msg):
+    def __sendMessage(self, builder, commandType, command):
         '''Send the given flatbuffers message to Hyperion. 
         - message : flatbuffers request to send
         '''
         try:
+            RequestStart(builder)
+            RequestAddCommandType(builder, commandType) 
+            RequestAddCommand(builder, command)
+            builder.Finish(RequestEnd(builder))
+
+            msg = builder.Output()
             self.__socket.sendall(struct.pack(">I", len(msg)) + msg)
             return True;
         except Exception, e:

@@ -129,7 +129,7 @@ class HyperionKodiGrabber():
         rawImgBuf[0::3], rawImgBuf[2::3] = rawImgBuf[2::3],rawImgBuf[0::3]
     
         # If this call fails, it will make us reconnect.
-        if not self.hyperion.sendImage(settings.capture_width, settings.capture_height, rawImgBuf, settings.priority, -1):
+        if not self.hyperion.sendImage(settings.capture_width, settings.capture_height, rawImgBuf, -1):
             notify(xbmcaddon.Addon().getLocalizedString(32101))
             return
  
@@ -187,8 +187,9 @@ class HyperionKodiGrabber():
             if not self.hyperion.isConnected():
                 log("grabbing stopped but client was not connected")
                 return
-            xbmc.sleep(100)
+
             self.hyperion.clear(settings.priority)
+            log("clearing priority")
 
 def runGrabber():
     global xbmcMonitor, playerMonitor, main
